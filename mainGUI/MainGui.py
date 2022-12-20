@@ -2,18 +2,24 @@ import time
 import datetime
 from datetime import date
 import tkinter as tk
-from tkinter.ttk import Combobox
-from conexion.conexion_db import conn
+from tkinter.ttk import Combobox, Treeview
+from model.clienteDao import clienteDao,guardar
+from model.precioDao import precioDao,guardarP, get_precio, listar_producto, editar_prod, delete_prod
+#from model.clienteDao import Crear_Tabla1
 from util.utilidades import centrar_ventana
 #============================Es un metodo para introducir barra de menu==================================
 def barra_menu(ventana):
     barra_menu = tk.Menu(ventana)
     ventana.config(menu = barra_menu, width = 300, height = 300)
-    menu_inicio = tk.Menu(barra_menu)
+    menu_inicio = tk.Menu(barra_menu, tearoff=0)
 #===========================Menu de opciones Inicio=====================================================
     barra_menu.add_cascade(label='Inicio', menu= menu_inicio)
     menu_inicio.add_command(label='HOLA')
-    menu_inicio.add_command(label='SALIR')
+    menu_inicio.add_command(label='Salir')
+    
+    menu_inicio1 = tk.Menu(barra_menu, tearoff=0)
+    barra_menu.add_cascade(label='consultas',menu=menu_inicio1)
+    menu_inicio1.add_command(label='Mostrar sistema ventas')
 
 def Jframe_master():
     ventana = tk.Tk()
@@ -32,9 +38,14 @@ class master(tk.Frame):
         super().__init__(root,bg = 'black',width = root.winfo_screenwidth(),height = root.winfo_screenheight())
         self.root = root
         self.pack()
+        self.id_producto = None
         self.create_paneles()
         self.hora()
         self.fecha()
+        self.disable_Rcliente()
+        self.obnter_precios()
+        self.tablaPrecio()
+        
     def create_paneles(self):
 #==========================Panel 1=================================================================================    
         panel_1 = tk.Frame(self,width=550,height=120, bg='pale green')
@@ -71,8 +82,12 @@ class master(tk.Frame):
         self.lbl_PrecioD.place(x=60,y=160)
         self.lbl_S = tk.Label(panel_3,text="S/",font=("Cooper Black",15),fg="blue",bg="gray82")
         self.lbl_S.place(x=60,y=190)
+        
         self.Entry_s = tk.Entry(panel_3,font=("Courier New",18,"bold"))
+        
         self.Entry_s.place(x=110,y=190,width=120,height=30)
+        
+        
         self.lbl_cantidad = tk.Label(panel_3,text="CANTIDAD",font=("Cooper Black",15),fg="black",bg="gray82")
         self.lbl_cantidad.place(x=60,y=230)
         self.lbl_cant = tk.Label(panel_3,text="Glns",font=("Cooper Black",15),fg="red",bg="gray82")
@@ -249,16 +264,16 @@ class master(tk.Frame):
         self.lbl_Direccion.place(x=60,y=230)
         self.Entry_Direccion = tk.Entry(panel_8,font=("Courier New",18,"bold"))
         self.Entry_Direccion.place(x=60,y=265,width=510,height=30)
-        #======BOTONES=======
-        self.btn_Nuevo = tk.Button(panel_8,text="NUEVO")
+        #==================BOTONES=======
+        self.btn_Nuevo = tk.Button(panel_8,text="NUEVO",command=self.enable_Rcliente)
         self.btn_Nuevo.config(width=14,height=1,font=("Arial",17,"bold"),fg="white",
                               bg='#158645', cursor='hand2',activebackground='#35BD6F')
         self.btn_Nuevo.place(x=20,y=350)
-        self.btn_Registar = tk.Button(panel_8,text="REGISTRAR")
+        self.btn_Registar = tk.Button(panel_8,text="REGISTRAR",command= self.guardar_Rcliente)
         self.btn_Registar.config(width=14,height=1,font=("Arial",17,"bold"),fg="white",
                               bg='#1658A2', cursor='hand2',activebackground='#3586DF')
         self.btn_Registar.place(x=248,y=350)
-        self.btn_Cancelar = tk.Button(panel_8,text="CANCELAR")
+        self.btn_Cancelar = tk.Button(panel_8,text="CANCELAR",command=self.disable_Rcliente)
         self.btn_Cancelar.config(width=14,height=1,font=("Arial",17,"bold"),fg="white",
                               bg='#BD152E', cursor='hand2',activebackground='#E15370')
         self.btn_Cancelar.place(x=475,y=350)
@@ -279,15 +294,104 @@ class master(tk.Frame):
         self.btn_Nuevo.config(width=15,height=1,font=("Arial",17,"bold"),fg="white",
                               bg='#158645', cursor='hand2',activebackground='#35BD6F')
         self.btn_Nuevo.place(x=350,y=10)
-        self.btn_Anadir = tk.Button(panel_9,text="AÑADIR")
+        self.btn_Anadir = tk.Button(panel_9,text="AÑADIR", command=self.guardar_Precio)
         self.btn_Anadir.config(width=15,height=1,font=("Arial",17,"bold"),fg="white",
                               bg='#1658A2', cursor='hand2',activebackground='#3586DF')
         self.btn_Anadir.place(x=350,y=65)
-        self.btn_Cancelar = tk.Button(panel_9,text="CANCELAR")
-        self.btn_Cancelar.config(width=15,height=1,font=("Arial",17,"bold"),fg="white",
+        self.btn_Cancelarx = tk.Button(panel_9,text="CANCELAR")
+        self.btn_Cancelarx.config(width=15,height=1,font=("Arial",17,"bold"),fg="white",
                               bg='#BD152E', cursor='hand2',activebackground='#E15370')
-        self.btn_Cancelar.place(x=350,y=120)
-    #def desbolitta
+        self.btn_Cancelarx.place(x=350,y=120)
+        self.btn_Anadir.place(x=350,y=65)
+        self.btn_editar = tk.Button(panel_9,text="EDITAR",command=self.editar_productos)
+        self.btn_editar.config(width=10,height=1,font=("Arial",17,"bold"),fg="white",
+                              bg='#158645', cursor='hand2',activebackground='#35BD6F')
+        self.btn_editar.place(x=30,y=180)
+        self.btn_eliminar = tk.Button(panel_9,text="ELIMINAR",command=self.eliminar_produc)
+        self.btn_eliminar.config(width=10,height=1,font=("Arial",17,"bold"),fg="white",
+                              bg='#BD152E', cursor='hand2',activebackground='#E15370')
+        self.btn_eliminar.place(x=30,y=230)
+        
+        
+#"====================desabilitar entrys========================================"
+    def tablaPrecio(self):
+        "======recuperar lista de precioDao===================="
+        self.Lista_precio = listar_producto()
+        self.Lista_precio.reverse()
+        self.Jtable_pre= Treeview(self, column= ('Nombre','pu'))
+        self.Jtable_pre.place(x=1500,y=750)
+        self.Jtable_pre.column("#0", width=50, minwidth=50)
+        self.Jtable_pre.column("#1", width=200, minwidth=200)
+        self.Jtable_pre.column("#2", width=150, minwidth=150)
+        self.Jtable_pre.heading('#0', text= 'ID')
+        self.Jtable_pre.heading('#1', text= 'PRODUCTO')
+        self.Jtable_pre.heading('#2', text= 'PRECIO_UNITARIO')
+        "============Interar lista====================="
+        for p in self.Lista_precio:
+            self.Jtable_pre.insert('',0,text=p[0],
+                                   values=(p[1],p[2]))
+    def editar_productos(self):
+        try:
+            self.id_producto = self.Jtable_pre.item(self.Jtable_pre.selection())['text']
+            self.nombre_producto = self.Jtable_pre.item(self.Jtable_pre.selection())['values'][0]
+            self.pu_producto = self.Jtable_pre.item(self.Jtable_pre.selection())['values'][1]
+            
+            self.Entry_NomProd.insert(0,self.nombre_producto)
+            self.Entry_Precio.insert(0,self.pu_producto)
+        except:
+            pass    
+        
+    def enable_Rcliente(self):
+        self.Entry_Nombre.config(state='normal')
+        self.Entry_DniRuc.config(state='normal')
+        self.cmbox_Opciones.config(state='normal')
+        self.Entry_Direccion.config(state='normal')
+        self.btn_Registar.config(state='normal')
+        self.btn_Cancelar.config(state='normal')   
+    def disable_Rcliente(self):
+        self.Entry_Nombre.config(state='disable')
+        self.Entry_DniRuc.config(state='disable')
+        self.cmbox_Opciones.config(state='disable')
+        self.Entry_Direccion.config(state='disable')
+        self.btn_Registar.config(state='disable')
+        self.btn_Cancelar.config(state='disable')
+    def guardar_Rcliente(self):
+        cliente = clienteDao(
+                self.Entry_Nombre.get(),
+                self.Entry_DniRuc.get(),
+                self.cmbox_Opciones.get(),
+                self.Entry_Direccion.get(),        
+        )
+        guardar(cliente)
+    def guardar_Precio(self):
+        producto = precioDao(
+                self.Entry_NomProd.get(),
+                self.Entry_Precio.get(),
+                        
+        )
+        if self.id_producto==None:
+            guardarP(producto)
+        else:
+            editar_prod(producto,self.id_producto)    
+            
+        self.tablaPrecio()
+    def eliminar_produc(self):
+        try:
+            self.id_producto = self.Jtable_pre.item(self.Jtable_pre.selection())['text']
+            delete_prod(self.id_producto)
+            self.tablaPrecio()
+        except:
+            pass
+        
+    def obnter_precios(self):
+        pu = get_precio()
+        for record in pu:
+            print ('ID : '+str(record[1]))
+            if (record[1]=="diesel b5 s-50uv"):
+                self.Entry_s.insert(0,record[2])
+            if (record[2]=="gasohol 84 plus"):
+                self.Entry_s84.insert(0,record[2])
+        
     def hora(self):
         now=time.strftime("%H:%M:%S")
         self.lbl_hora.configure(text=now)
@@ -298,9 +402,7 @@ class master(tk.Frame):
         today = date.today()
         d=today.strftime("%d /%m / %Y")
         self.lbl_fecha.configure(text=d + ' | '+ week_day)
-    def registrarcon(self):
-        con = conn()   
-        curs = con.conexion()
+   
         
         """data = (name, age, gender, salary,)
             query = "INSERT into USERS (name, age, gender, salary) VALUES (?, ?, ?,?)"
